@@ -9,19 +9,26 @@
 
 <h1>Snake Game</h1>
 
-<div id="info">
-    <div id="score">Score: 0</div>
-    <div id="best">Best: 0</div>
-</div>
+    <div id="menu">
+        <h3>Chọn độ khó</h3>
+        <button onclick="startGame('easy')">Dễ</button>
+        <button onclick="startGame('medium')">Trung bình</button>
+        <button onclick="startGame('hard')">Khó</button>
+    </div>
 
-<canvas id="game" width="400" height="400"></canvas>
+    <div id="info">
+        <div id="score">Score: 0</div>
+        <div id="best">Best: 0</div>
+    </div>
 
-<div id="gameOver">
-    <h2>Game Over</h2>
-    <button onclick="restartGame()">Chơi lại</button>
-</div>
+    <canvas id="game" width="400" height="400"></canvas>
 
-<script src="snake.js"></script>
+    <div id="gameOver">
+        <h2>Game Over</h2>
+        <button onclick="restartGame()">Chơi lại</button>
+    </div>
+
+    <script src="snake.js"></script>
 
 </body>
 </html>
