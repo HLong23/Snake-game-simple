@@ -9,6 +9,7 @@ const menu = document.getElementById("menu");
 const box = 20;
 const canvasSize = 400;
 
+let currentLevel = "easy";
 let snake, food, obstacles;
 let score;
 let game;
@@ -105,13 +106,28 @@ function initGame(level) {
     game = setInterval(draw, speed);
 }
 
-function startGame(level) {
-    menu.style.display = "none";
-    initGame(level);
+function selectLevel(level) {
+    currentLevel = level;
+
+    document.querySelectorAll(".buttons button").forEach(btn => {
+        btn.classList.remove("active");
+    });
+
+    event.target.classList.add("active");
+
+    if (!started || gameOverDiv.style.display === "block") {
+        initGame(currentLevel);
+    }
 }
 
 document.addEventListener("keydown", function (e) {
-    if (!started) started = true;
+
+    if (!started) {
+        started = true;
+        if (!snake) {
+            initGame(currentLevel);
+        }
+    }
 
     if (e.key === "ArrowLeft") snake.setDirection("LEFT");
     if (e.key === "ArrowRight") snake.setDirection("RIGHT");
@@ -244,6 +260,6 @@ function gameOver() {
 }
 
 function restartGame() {
-    menu.style.display = "block";
     gameOverDiv.style.display = "none";
+    initGame(currentLevel);
 }
