@@ -5,10 +5,14 @@ const scoreText = document.getElementById("score");
 const bestText = document.getElementById("best");
 const gameOverDiv = document.getElementById("gameOver");
 const menu = document.getElementById("menu");
+const bgMusic = document.getElementById("bgMusic");
+const eatSound = document.getElementById("eatSound");
+const toggleBtn = document.getElementById("toggleSound");
 
 const box = 20;
 const canvasSize = 400;
 
+let soundOn = true;
 let currentLevel = "easy";
 let snake, food, obstacles;
 let score;
@@ -120,7 +124,25 @@ function selectLevel(level) {
     }
 }
 
+soundOn = localStorage.getItem("sound") !== "off";
+toggleBtn.innerText = soundOn ? "🔊 Bật/Tắt nhạc" : "🔇 Đã tắt";
+
+toggleBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    localStorage.setItem("sound", soundOn ? "on" : "off");
+
+    if (soundOn) {
+        bgMusic.play().catch(() => {});
+    } else {
+        bgMusic.pause();
+    }
+});
+
 document.addEventListener("keydown", function (e) {
+
+    if (bgMusic.paused && soundOn) {
+        bgMusic.play().catch(() => {});
+    }
 
     if (!started) {
         started = true;
@@ -145,16 +167,20 @@ function update() {
 
     let newHead = snake.move();
 
-    if (
-        newHead.x < 0 || newHead.y < 0 ||
+    if (newHead.x < 0 || newHead.y < 0 ||
         newHead.x >= canvasSize || newHead.y >= canvasSize ||
         collision(newHead, snake.body) ||
-        collision(newHead, obstacles)
-    ) {
+        collision(newHead, obstacles)) {
         return gameOver();
     }
 
     if (newHead.x === food.x && newHead.y === food.y) {
+
+        if (soundOn) {
+            eatSound.currentTime = 0;
+            eatSound.play();
+        }
+
         score += food.applyEffect();
         scoreText.innerText = "Score: " + score;
 
