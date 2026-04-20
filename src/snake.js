@@ -4,7 +4,6 @@ const ctx = canvas.getContext("2d");
 const scoreText = document.getElementById("score");
 const bestText = document.getElementById("best");
 const gameOverDiv = document.getElementById("gameOver");
-const menu = document.getElementById("menu");
 const bgMusic = document.getElementById("bgMusic");
 const eatSound = document.getElementById("eatSound");
 const toggleBtn = document.getElementById("toggleSound");
@@ -19,8 +18,8 @@ let score;
 let game;
 let started = false;
 let speed = 150;
-
 let bestScore = localStorage.getItem("bestScore") || 0;
+
 bestText.innerText = "Best: " + bestScore;
 
 class Snake {
@@ -97,7 +96,8 @@ function initGame(level) {
     snake = new Snake();
     score = 0;
     started = false;
-
+    bgMusic.volume = 0.6;
+    eatSound.volume = 1;
     obstacles = generateObstacles(level);
     food = spawnFood();
 
@@ -125,8 +125,6 @@ function selectLevel(level) {
 }
 
 soundOn = localStorage.getItem("sound") !== "off";
-toggleBtn.innerText = soundOn ? "🔊 Bật/Tắt nhạc" : "🔇 Đã tắt";
-
 toggleBtn.addEventListener("click", () => {
     soundOn = !soundOn;
     localStorage.setItem("sound", soundOn ? "on" : "off");
@@ -138,23 +136,32 @@ toggleBtn.addEventListener("click", () => {
     }
 });
 
-document.addEventListener("keydown", function (e) {
-
+function handleAudioStart() {
     if (bgMusic.paused && soundOn) {
         bgMusic.play().catch(() => {});
     }
+}
 
+function handleGameStart() {
     if (!started) {
         started = true;
         if (!snake) {
-            initGame(currentLevel);
+        initGame(currentLevel);
         }
     }
+}
 
-    if (e.key === "ArrowLeft") snake.setDirection("LEFT");
+function handleDirection(e) {
+    if (e.key === "ArrowLeft")  snake.setDirection("LEFT");
     if (e.key === "ArrowRight") snake.setDirection("RIGHT");
     if (e.key === "ArrowUp") snake.setDirection("UP");
     if (e.key === "ArrowDown") snake.setDirection("DOWN");
+}
+
+document.addEventListener("keydown", function (e) {
+    handleAudioStart();
+    handleGameStart();
+    handleDirection(e);
 });
 
 function draw() {
