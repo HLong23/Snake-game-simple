@@ -27,6 +27,7 @@ class Map {
     constructor(level) {
         this.level = level;
 
+        // Kích thước lưới theo cấp độ
         if (level === 1) {
             this.cols = 10;
             this.rows = 10;
@@ -38,16 +39,18 @@ class Map {
             this.rows = 30;
         }
 
-        this.box = CANVASSIZE / this.cols;
+        this.box = CANVASSIZE / this.cols; // Kích thước mỗi ô (pixel)
         this.obstacles = this.generateObstacles();
     }
 
+    // Tạo vật cản ngẫu nhiên (level 3)
     generateObstacles() {
         if (this.level < 3) return [];
 
         const obs = [];
         const count = 20;
         const forbidden = new Set();
+
         for (let dx = -2; dx <= 2; dx++)
             for (let dy = -2; dy <= 2; dy++) {
                 const cx = Math.floor(this.cols / 2) + dx;
@@ -73,18 +76,16 @@ class Map {
         return this.obstacles.some(o => o.gx === gx && o.gy === gy);
     }
 
+    // Chuyển đổi tọa độ lưới ↔ pixel
     toPixel(gx, gy) {
         return { x: gx * this.box, y: gy * this.box };
-    }
-
-    toGrid(x, y) {
-        return { gx: Math.round(x / this.box), gy: Math.round(y / this.box) };
     }
 
     drawBackground() {
         ctx.fillStyle = "#020617";
         ctx.fillRect(0, 0, CANVASSIZE, CANVASSIZE);
 
+        // Vẽ lưới
         ctx.strokeStyle = "#0f2040";
         ctx.lineWidth = 0.5;
         for (let i = 0; i <= this.cols; i++) {
@@ -97,6 +98,7 @@ class Map {
         }
     }
 
+    // Vẽ vật cản
     drawObstacles() {
         const b = this.box;
         this.obstacles.forEach(o => {
@@ -104,16 +106,17 @@ class Map {
             ctx.fillStyle = "#475569";
             ctx.fillRect(x + 1, y + 1, b - 2, b - 2);
 
-            ctx.fillStyle = "#64748b";
+            ctx.fillStyle = "#64748b"; // Cạnh sáng (trên, trái)
             ctx.fillRect(x + 1, y + 1, b - 2, 4);
             ctx.fillRect(x + 1, y + 1, 4, b - 2);
 
-            ctx.fillStyle = "#334155";
+            ctx.fillStyle = "#334155"; // Cạnh tối (dưới, phải)
             ctx.fillRect(x + 1, y + b - 5, b - 2, 4);
             ctx.fillRect(x + b - 5, y + 1, 4, b - 2);
         });
     }
 
+    // Xuyên tường (level 1)
     wrapGrid(gx, gy) {
         return {
             gx: (gx + this.cols) % this.cols,
@@ -125,6 +128,7 @@ class Map {
         return gx < 0 || gy < 0 || gx >= this.cols || gy >= this.rows;
     }
 
+    // Tìm ô trống ngẫu nhiên
     randomFreeCell(snakeBody, existingFoods) {
         const occupied = new Set();
         snakeBody.forEach(s => occupied.add(`${s.gx},${s.gy}`));
@@ -149,9 +153,10 @@ class Snake {
         const startGy = Math.floor(map.rows / 2);
         this.body = [{ gx: startGx, gy: startGy }];
         this.direction = null;
-        this.nextDirection = null;
+        this.nextDirection = null; // Hướng
     }
 
+    // Ngăn đổi hướng ngược chiều trực tiếp
     setDirection(dir) {
         const opposites = { LEFT: "RIGHT", RIGHT: "LEFT", UP: "DOWN", DOWN: "UP" };
         if (dir !== opposites[this.direction]) {
@@ -159,6 +164,7 @@ class Snake {
         }
     }
 
+    // Tính ô đầu tiếp theo
     getNextHead() {
         this.direction = this.nextDirection || this.direction;
         if (!this.direction) return null;
@@ -201,6 +207,7 @@ class Snake {
             if (i === 0) {
                 this.drawHead(x + pad, y + pad, size, radius);
             } else {
+                // Thân rắn: gradient xanh đậm dần về đuôi
                 const ratio = i / this.body.length;
                 const g = Math.round(200 - ratio * 100);
                 drawRoundedRect(x + pad, y + pad, size, radius, `rgb(0,${g},80)`);
@@ -208,6 +215,7 @@ class Snake {
         });
     }
 
+    // Vẽ đầu
     drawHead(x, y, size, radius) {
         const dir = this.direction || "RIGHT";
         let gx0, gy0, gx1, gy1;
@@ -266,7 +274,7 @@ class Snake {
             ctx.beginPath();
             ctx.arc(ex, ey, pupilR, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.fillStyle = "rgba(255,255,255,0.85)"; // Ánh mắt
             ctx.beginPath();
             ctx.arc(ex - pupilR * 0.3, ey - pupilR * 0.3, pupilR * 0.35, 0, Math.PI * 2);
             ctx.fill();
@@ -317,10 +325,15 @@ class Snake {
     }
 }
 
+// THỨC ĂN
+// points > 0 : tăng điểm & kéo dài thân
+// points < 0 : trừ điểm & rút ngắn thân
+// points = 0 : không đổi
+// rate       : trọng số xác suất spawn (tương đối)
 const FOODTYPES = {
-    foodAdd1:  { color: "#ef4444", glow: "#ff000080", points:  1, rate: 0.55, label: "+1" },
-    foodRemove1:  { color: "#a855f7", glow: "#a855f780", points: -1, rate: 0.20, label: "-1" },
-    foodAdd3:   { color: "#f59e0b", glow: "#fbbf2480", points:  3, rate: 0.10, label: "+3" },
+    foodAdd1:    { color: "#ef4444", glow: "#ff000080", points:  1, rate: 0.55, label: "+1" },
+    foodRemove1: { color: "#a855f7", glow: "#a855f780", points: -1, rate: 0.20, label: "-1" },
+    foodAdd3:    { color: "#f59e0b", glow: "#fbbf2480", points:  3, rate: 0.10, label: "+3" },
     foodNothing: { color: "#38bdf8", glow: "#38bdf880", points:  0, rate: 0.15, label: "±0" },
 };
 
@@ -329,7 +342,7 @@ class Food {
         this.gx = gx;
         this.gy = gy;
         this.type = type;
-        this.pulse = Math.random() * Math.PI * 2;
+        this.pulse = Math.random() * Math.PI * 2; // Offset pha để các quả nhấp nháy lệch nhau
         this.info = FOODTYPES[type];
     }
 
@@ -339,7 +352,7 @@ class Food {
         const b = map.box;
         const cx = x + b / 2;
         const cy = y + b / 2;
-        const radius = (b * 0.3) + Math.sin(this.pulse) * (b * 0.05);
+        const radius = (b * 0.3) + Math.sin(this.pulse) * (b * 0.05); // Bán kính dao động
 
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 2);
         grad.addColorStop(0, this.info.glow);
@@ -364,12 +377,14 @@ class Food {
     }
 }
 
+// Loại thức ăn hợp lệ theo cấp độ
 function getAvailableFoodTypes(level) {
     if (level === 1) return ["foodAdd1"];
     if (level === 2) return ["foodAdd1", "foodRemove1"];
     return ["foodAdd1", "foodAdd3", "foodRemove1", "foodNothing"];
 }
 
+// Chọn ngẫu nhiên theo trọng số rate
 function pickWeightedType(availableTypes) {
     const pool = availableTypes.map(t => ({ type: t, rate: FOODTYPES[t].rate }));
     const total = pool.reduce((sum, p) => sum + p.rate, 0);
@@ -381,6 +396,7 @@ function pickWeightedType(availableTypes) {
     return pool[pool.length - 1].type;
 }
 
+// Spawn `count` quả
 function spawnFoods(count, ensurePositive = false) {
     const newFoods = [];
     const types = getAvailableFoodTypes(currentLevel);
@@ -406,6 +422,7 @@ function getFoodCount() {
     return 3;
 }
 
+// Chạy game
 function initGame(level) {
     currentLevel = level;
     map = new Map(level);
@@ -417,8 +434,7 @@ function initGame(level) {
     started = false;
     foods = [];
 
-    const count = getFoodCount();
-    foods = spawnFoods(count, level > 1);
+    foods = spawnFoods(getFoodCount(), level > 1);
 
     speed = baseSpeed / speedMultiplier;
     scoreText.innerText = "Score: 0";
@@ -455,13 +471,11 @@ document.addEventListener("keydown", function (e) {
     if (!dir) return;
 
     e.preventDefault();
-
-    if (!started) {
-        started = true;
-    }
+    if (!started) started = true;
     if (snake) snake.setDirection(dir);
 });
 
+// Logic mỗi tick
 function draw() {
     update();
     render();
@@ -473,27 +487,17 @@ function update() {
     const newHead = snake.getNextHead();
     if (!newHead) return;
 
-    if (currentLevel > 1 && map.outOfBounds(newHead.gx, newHead.gy)) {
-        return gameOver();
-    }
-
-    if (map.isObstacle(newHead.gx, newHead.gy)) {
-        return gameOver();
-    }
-
-    if (snake.collidesWithSelf(newHead)) {
-        return gameOver();
-    }
+    // Kiểm tra va chạm
+    if (currentLevel > 1 && map.outOfBounds(newHead.gx, newHead.gy)) return gameOver();
+    if (map.isObstacle(newHead.gx, newHead.gy)) return gameOver();
+    if (snake.collidesWithSelf(newHead)) return gameOver();
 
     const eatenIndex = foods.findIndex(f => f.gx === newHead.gx && f.gy === newHead.gy);
 
     if (eatenIndex !== -1) {
         const eaten = foods.splice(eatenIndex, 1)[0];
 
-        if (soundOn) {
-            eatSound.currentTime = 0;
-            eatSound.play();
-        }
+        if (soundOn) { eatSound.currentTime = 0; eatSound.play(); }
 
         score = Math.max(0, score + eaten.info.points);
         scoreText.innerText = "Score: " + score;
@@ -504,6 +508,7 @@ function update() {
             bestText.innerText = "Best: " + bestScore;
         }
 
+        // Điều chỉnh độ dài rắn theo loại thức ăn
         if (eaten.info.points > 0) {
             snake.grow(newHead);
             for (let i = 1; i < eaten.info.points; i++) {
@@ -515,17 +520,14 @@ function update() {
             for (let i = 0; i < removeCount; i++) snake.foodRemove1Tail();
         } else {
             snake.grow(newHead);
-            snake.foodRemove1Tail();
+            snake.foodRemove1Tail(); // Neutral: giữ nguyên độ dài
         }
 
+        // Spawn quả
         for (let i = 0; i < 2 && foods.length > 0; i++) {
-            const removeIdx = Math.floor(Math.random() * foods.length);
-            foods.splice(removeIdx, 1);
+            foods.splice(Math.floor(Math.random() * foods.length), 1);
         }
-
-        const ensurePositive = currentLevel > 1;
-        const newFoods = spawnFoods(3, ensurePositive);
-        foods.push(...newFoods);
+        foods.push(...spawnFoods(3, currentLevel > 1));
 
     } else {
         snake.grow(newHead);
@@ -539,6 +541,7 @@ function render() {
     foods.forEach(f => f.draw(map));
     snake.draw();
 
+    // Màn hình chờ bắt đầu
     if (!started) {
         ctx.fillStyle = "rgba(0,0,0,0.55)";
         ctx.fillRect(0, 0, CANVASSIZE, CANVASSIZE);
@@ -550,6 +553,7 @@ function render() {
     }
 }
 
+// Tiện ích
 function drawRoundedRect(x, y, size, radius, color) {
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -579,7 +583,7 @@ function updateGameSpeed() {
 }
 
 function gameOver() {
-    if(soundOn) hitSound.play();
+    if (soundOn) hitSound.play();
     clearInterval(game);
     gameOverDiv.style.display = "flex";
 }
