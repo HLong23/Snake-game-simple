@@ -8,7 +8,6 @@
 <body>
 
 <div id="container">
-
     <div id="app">
 
         <h1 class="title">🐍 Snake Game</h1>
@@ -16,44 +15,61 @@
         <div class="container">
 
             <div class="game-box">
-                <canvas id="game" width="400" height="400"></canvas>
+                <canvas id="game" width="600" height="600"></canvas>
             </div>
 
             <div class="panel">
 
-                <div class="card">
+                <div class="card info">
                     <h2>Thông tin</h2>
                     <p id="score">Score: 0</p>
                     <p id="best">Best: 0</p>
                 </div>
 
-                <div class="card">
+                <div class="card level">
                     <h2>Độ khó</h2>
                     <div class="buttons">
-                        <button onclick="selectLevel('easy')">Dễ</button>
-                        <button onclick="selectLevel('medium')">Trung bình</button>
-                        <button onclick="selectLevel('hard')">Khó</button>
+                        <button class="active" onclick="selectLevel(1)">1</button>
+                        <button onclick="selectLevel(2)">2</button>
+                        <button onclick="selectLevel(3)">3</button>
+                    </div>
+                </div>
+
+                <div class="card legend">
+                    <h2>Loại quả</h2>
+                    <div class="legend-item"><span class="dot" style="background:#ef4444"></span> Thường (+1đ, +dài)</div>
+                    <div class="legend-item"><span class="dot" style="background:#f59e0b"></span> Bonus (+3đ, +dài)</div>
+                    <div class="legend-item"><span class="dot" style="background:#a855f7"></span> Giảm (+1đ, -dài)</div>
+                    <div class="legend-item"><span class="dot" style="background:#38bdf8"></span> Trung tính (+1đ, =)</div>
+                </div>
+
+                <div class="card speed">
+                    <h2>Tốc độ</h2>
+                    <div class="speed-control">
+                        <button onclick="changeSpeed(-0.25)">&lt;|</button>
+                        <span id="speedValue">1.00</span>
+                        <button onclick="changeSpeed(0.25)">|&gt;</button>
                     </div>
                 </div>
 
                 <div class="card">
                     <h2>Âm thanh</h2>
-                    <button id="toggleSound">🔊 Bật/Tắt nhạc</button>
+                    <button id="toggleSound">🔊 Bật/Tắt</button>
                 </div>
 
                 <audio id="bgMusic" src="music/bg.mp3" loop></audio>
                 <audio id="eatSound" src="music/eat.mp3"></audio>
+                <audio id="hitSound" src="music/hit.mp3"></audio>
 
                 <div id="gameOver" class="card gameover">
-                    <h2>Game Over</h2>
+                    <h2>💀 Game Over</h2>
+                    <p id="finalScore"></p>
                     <button onclick="restartGame()">Chơi lại</button>
                 </div>
 
             </div>
-
         </div>
     </div>
-
     <script src="snake.js"></script>
 </div>
 
