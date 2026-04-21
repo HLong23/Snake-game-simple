@@ -194,7 +194,6 @@ button.active {
     margin-top: 4px;
 }
 
-/* ── Responsive (small screens) ── */
 @media (max-width: 880px) {
     .container {
         flex-direction: column;

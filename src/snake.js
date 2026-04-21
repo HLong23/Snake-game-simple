@@ -101,7 +101,6 @@ class Map {
         const b = this.box;
         this.obstacles.forEach(o => {
             const { x, y } = this.toPixel(o.gx, o.gy);
-            // Wall block with 3D look
             ctx.fillStyle = "#475569";
             ctx.fillRect(x + 1, y + 1, b - 2, b - 2);
 
@@ -183,7 +182,7 @@ class Snake {
         this.body.unshift(newHead);
     }
 
-    shrinkTail() {
+    foodRemove1Tail() {
         if (this.body.length > 1) this.body.pop();
     }
 
@@ -259,17 +258,14 @@ class Snake {
         else                      { eye1 = [x + side1, y + size - front]; eye2 = [x + side2, y + size - front]; }
 
         [eye1, eye2].forEach(([ex, ey]) => {
-            // White sclera
             ctx.fillStyle = "#e0ffe8";
             ctx.beginPath();
             ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
             ctx.fill();
-            // Dark pupil
             ctx.fillStyle = "#001a0d";
             ctx.beginPath();
             ctx.arc(ex, ey, pupilR, 0, Math.PI * 2);
             ctx.fill();
-            // Tiny glint
             ctx.fillStyle = "rgba(255,255,255,0.85)";
             ctx.beginPath();
             ctx.arc(ex - pupilR * 0.3, ey - pupilR * 0.3, pupilR * 0.35, 0, Math.PI * 2);
@@ -322,14 +318,14 @@ class Snake {
 }
 
 const FOODTYPES = {
-    normal:  { color: "#ef4444", glow: "#ff000080", points: 1, label: "+1" },
-    bonus:   { color: "#f59e0b", glow: "#fbbf2480", points: 3, label: "+3" },
-    shrink:  { color: "#a855f7", glow: "#a855f780", points: 1, label: "-1" },
-    neutral: { color: "#38bdf8", glow: "#38bdf880", points: 0,  lengthChange:  0, label: "±0" },
+    foodAdd1:  { color: "#ef4444", glow: "#ff000080", points:  1, rate: 0.55, label: "+1" },
+    foodRemove1:  { color: "#a855f7", glow: "#a855f780", points: -1, rate: 0.20, label: "-1" },
+    foodAdd3:   { color: "#f59e0b", glow: "#fbbf2480", points:  3, rate: 0.10, label: "+3" },
+    foodNothing: { color: "#38bdf8", glow: "#38bdf880", points:  0, rate: 0.15, label: "±0" },
 };
 
 class Food {
-    constructor(gx, gy, type = "normal") {
+    constructor(gx, gy, type = "foodAdd1") {
         this.gx = gx;
         this.gy = gy;
         this.type = type;
@@ -369,28 +365,36 @@ class Food {
 }
 
 function getAvailableFoodTypes(level) {
-    if (level === 1) return ["normal"];
-    if (level === 2) return ["normal", "shrink", "neutral"];
-    return ["normal", "bonus", "shrink", "neutral"];
+    if (level === 1) return ["foodAdd1"];
+    if (level === 2) return ["foodAdd1", "foodRemove1"];
+    return ["foodAdd1", "foodAdd3", "foodRemove1", "foodNothing"];
 }
 
-function spawnFoods(count, ensureGrowth = false) {
+function pickWeightedType(availableTypes) {
+    const pool = availableTypes.map(t => ({ type: t, rate: FOODTYPES[t].rate }));
+    const total = pool.reduce((sum, p) => sum + p.rate, 0);
+    let r = Math.random() * total;
+    for (const p of pool) {
+        r -= p.rate;
+        if (r <= 0) return p.type;
+    }
+    return pool[pool.length - 1].type;
+}
+
+function spawnFoods(count, ensurePositive = false) {
     const newFoods = [];
     const types = getAvailableFoodTypes(currentLevel);
-    let hasGrowth = false;
+    const positiveTypes = types.filter(t => FOODTYPES[t].points > 0);
 
     for (let i = 0; i < count; i++) {
         const cell = map.randomFreeCell(snake.body, [...foods, ...newFoods]);
         if (!cell) break;
 
-        let type;
-        if (ensureGrowth && !hasGrowth && i === count - 1) {
-            type = Math.random() < 0.3 ? "bonus" : "normal";
-        } else {
-            type = types[Math.floor(Math.random() * types.length)];
-        }
+        const needsGuarantee = ensurePositive && i === count - 1 && !newFoods.some(f => f.info.points > 0);
+        const type = needsGuarantee
+            ? positiveTypes[Math.floor(Math.random() * positiveTypes.length)]
+            : pickWeightedType(types);
 
-        if (type === "normal" || type === "bonus") hasGrowth = true;
         newFoods.push(new Food(cell.gx, cell.gy, type));
     }
     return newFoods;
@@ -414,8 +418,7 @@ function initGame(level) {
     foods = [];
 
     const count = getFoodCount();
-    const ensureGrowth = level > 1;
-    foods = spawnFoods(count, ensureGrowth);
+    foods = spawnFoods(count, level > 1);
 
     speed = baseSpeed / speedMultiplier;
     scoreText.innerText = "Score: 0";
@@ -485,8 +488,7 @@ function update() {
     const eatenIndex = foods.findIndex(f => f.gx === newHead.gx && f.gy === newHead.gy);
 
     if (eatenIndex !== -1) {
-        const eaten = foods[eatenIndex];
-        foods.splice(eatenIndex, 1);
+        const eaten = foods.splice(eatenIndex, 1)[0];
 
         if (soundOn) {
             eatSound.currentTime = 0;
@@ -494,26 +496,40 @@ function update() {
         }
 
         score = Math.max(0, score + eaten.info.points);
-        const displayScore = score;
+        scoreText.innerText = "Score: " + score;
 
-        scoreText.innerText = "Score: " + displayScore;
-
-        if (displayScore > bestScore) {
-            bestScore = displayScore;
+        if (score > bestScore) {
+            bestScore = score;
             localStorage.setItem("bestScore", bestScore);
             bestText.innerText = "Best: " + bestScore;
         }
 
-        snake.grow(newHead);
+        if (eaten.info.points > 0) {
+            snake.grow(newHead);
+            for (let i = 1; i < eaten.info.points; i++) {
+                snake.body.push({ ...snake.body[snake.body.length - 1] });
+            }
+        } else if (eaten.info.points < 0) {
+            snake.grow(newHead);
+            const removeCount = Math.abs(eaten.info.points) + 1;
+            for (let i = 0; i < removeCount; i++) snake.foodRemove1Tail();
+        } else {
+            snake.grow(newHead);
+            snake.foodRemove1Tail();
+        }
 
-        const targetLength = score + 1;
-        while (snake.body.length > targetLength) snake.shrinkTail();
-        const ensureGrowth = currentLevel > 1;
-        const replacement = spawnFoods(1, ensureGrowth && foods.every(f => f.info.lengthChange <= 0));
-        foods.push(...replacement);
+        for (let i = 0; i < 2 && foods.length > 0; i++) {
+            const removeIdx = Math.floor(Math.random() * foods.length);
+            foods.splice(removeIdx, 1);
+        }
+
+        const ensurePositive = currentLevel > 1;
+        const newFoods = spawnFoods(3, ensurePositive);
+        foods.push(...newFoods);
+
     } else {
         snake.grow(newHead);
-        snake.shrinkTail();
+        snake.foodRemove1Tail();
     }
 }
 
