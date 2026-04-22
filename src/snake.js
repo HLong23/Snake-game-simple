@@ -318,8 +318,8 @@ function pickWeightedType(availableTypes) {
 }
 
 function spawnFoods(count, ensurePositive = false) {
-    const newFoods     = [];
-    const types        = getAvailableFoodTypes(currentLevel);
+    const newFoods      = [];
+    const types         = getAvailableFoodTypes(currentLevel);
     const positiveTypes = types.filter(t => FOODTYPES[t].points > 0);
     for (let i = 0; i < count; i++) {
         const cell = map.randomFreeCell(snake.body, [...foods, ...newFoods]);
@@ -349,74 +349,15 @@ function setBestScore(level, val) {
 function updateBestDisplay() {
     bestText.innerText = "Best: " + getBestScore(currentLevel);
 }
-let particles = [];
-
-/* Tạo hiệu ứng hạt bay (particle) khi ăn mồi: sinh ra các điểm nhỏ có vận tốc ngẫu nhiên,
-di chuyển theo quán tính + trọng lực, mờ dần theo thời gian và tự biến mất khi alpha = 0 */
-class Particle {
-    constructor(cx, cy, color) {
-        this.x  = cx;
-        this.y  = cy;
-        const angle = Math.random() * Math.PI * 2;
-        const spd   = 3.5 + Math.random() * 5;
-        this.vx     = Math.cos(angle) * spd;
-        this.vy     = Math.sin(angle) * spd;
-        this.alpha  = 1;
-        this.radius = 2 + Math.random() * 3;
-        this.color  = color;
-        this.decay  = 0.1 + Math.random() * 0.03;
-    }
-    update() {
-        this.x     += this.vx;
-        this.y     += this.vy;
-        this.vy    += 0.08;
-        this.alpha -= this.decay;
-    }
-    draw() {
-        if (this.alpha <= 0) return;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, this.alpha);
-        ctx.fillStyle   = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-    isDead() { return this.alpha <= 0; }
-}
-
-function spawnParticles(cx, cy, foodType) {
-    const colorMap = {
-        foodAdd1:    "#ef4444",
-        foodRemove1: "#a855f7",
-        foodAdd3:    "#f59e0b",
-        foodNothing: "#38bdf8",
-    };
-    const base  = colorMap[foodType] || "#ffffff";
-    const count = foodType === "foodAdd3" ? 20 : 12;
-    for (let i = 0; i < count; i++) {
-        particles.push(new Particle(cx, cy, base));
-    }
-}
-
-function updateParticles() {
-    particles.forEach(p => p.update());
-    particles = particles.filter(p => !p.isDead());
-}
-
-function drawParticles() {
-    particles.forEach(p => p.draw());
-}
 
 // khởi động game
 function initGame(level) {
     currentLevel = level;
-    map    = new Map(level);
-    snake  = new Snake(map);
-    score  = 0;
-    paused = false;
+    map        = new Map(level);
+    snake      = new Snake(map);
+    score      = 0;
+    paused     = false;
     isGameOver = false;
-    particles = [];
     eatSound.volume = 1;
     bgMusic.volume  = 0.6;
     hitSound.volume = 1;
@@ -495,10 +436,6 @@ function update() {
 
         if (soundOn) { eatSound.currentTime = 0; eatSound.play(); }
 
-        const px = newHead.gx * map.box + map.box / 2;
-        const py = newHead.gy * map.box + map.box / 2;
-        spawnParticles(px, py, eaten.type);
-
         score = Math.max(0, score + eaten.info.points);
         scoreText.innerText = "Score: " + score;
 
@@ -528,8 +465,6 @@ function update() {
         snake.grow(newHead);
         snake.foodRemove1Tail();
     }
-
-    updateParticles();
 }
 
 function render() {
@@ -537,7 +472,6 @@ function render() {
     map.drawObstacles();
     foods.forEach(f => f.draw(map));
     snake.draw();
-    drawParticles();
 
     if (!started) {
         ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -586,8 +520,8 @@ function renderPauseOverlay() {
     const bw = CANVASSIZE * 0.06, bh = CANVASSIZE * 0.14;
     const bx = CANVASSIZE / 2 - bw - CANVASSIZE * 0.03;
     const by = CANVASSIZE / 2 - CANVASSIZE * 0.13;
-    ctx.fillRect(bx,             by, bw, bh);
-    ctx.fillRect(bx + bw * 2,   by, bw, bh);
+    ctx.fillRect(bx,           by, bw, bh);
+    ctx.fillRect(bx + bw * 2, by, bw, bh);
 
     ctx.fillStyle    = "#00ff99";
     ctx.font         = `bold ${CANVASSIZE * 0.06}px monospace`;
@@ -615,7 +549,7 @@ function updateGameSpeed() {
 
 function gameOver() {
     if (soundOn) hitSound.play();
-    isGameOver = true;      // đánh dấu đã chết
+    isGameOver = true;
     clearInterval(game);
     gameOverDiv.style.display = "flex";
 }
