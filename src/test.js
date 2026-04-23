@@ -4,11 +4,15 @@ const ctx = canvas.getContext("2d");
 const scoreText = document.getElementById("score");
 const bestText = document.getElementById("best");
 const gameOverDiv = document.getElementById("gameOver");
-const menu = document.getElementById("menu");
+const finalScoreText = document.getElementById("finalScore");
+const bgMusic = document.getElementById("bgMusic");
+const eatSound = document.getElementById("eatSound");
+const hitSound = document.getElementById("hitSound");
+const toggleBtn = document.getElementById("toggleSound");
+const CANVASSIZE = 600;
 
-const box = 20;
-const canvasSize = 400;
-
+let soundOn = localStorage.getItem("sound") !== "off";
+let currentLevel = 1;
 let snake, food, obstacles;
 let direction = null;
 let nextDirection = null;
@@ -16,13 +20,19 @@ let score;
 let game;
 let started = false;
 let speed = 150;
+let baseSpeed = 150;
+let speedMultiplier = 1;
 let foodPulse = 0;
 
-let bestScore = localStorage.getItem("bestScore") || 0;
+const COLS = 20;
+const box = CANVASSIZE / COLS;
+
+let bestScore = parseInt(localStorage.getItem("bestScore")) || 0;
 bestText.innerText = "Best: " + bestScore;
 
 function initGame(level) {
-    snake = [{ x: 200, y: 200 }];
+    currentLevel = level;
+    snake = [{ x: 10, y: 10 }];
     direction = null;
     nextDirection = null;
     started = false;
@@ -32,7 +42,7 @@ function initGame(level) {
     obstacles = generateObstacles(level);
     food = randomFood();
 
-    speed = level === "easy" ? 150 : level === "medium" ? 120 : 90;
+    speed = baseSpeed / speedMultiplier;
 
     scoreText.innerText = "Score: 0";
     gameOverDiv.style.display = "none";
@@ -41,23 +51,123 @@ function initGame(level) {
     game = setInterval(draw, speed);
 }
 
-function startGame(level) {
-    menu.style.display = "none";
+function selectLevel(level) {
+    currentLevel = level;
+    document.querySelectorAll(".buttons button").forEach(btn => btn.classList.remove("active"));
+    event.target.classList.add("active");
     initGame(level);
 }
 
+toggleBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    localStorage.setItem("sound", soundOn ? "on" : "off");
+    soundOn ? bgMusic.play().catch(() => {}) : bgMusic.pause();
+});
+
 document.addEventListener("keydown", function (e) {
+    if (bgMusic.paused && soundOn) bgMusic.play().catch(() => {});
+
     if (!started) started = true;
 
-    if (e.key === "ArrowLeft" && direction !== "RIGHT") nextDirection = "LEFT";
-    if (e.key === "ArrowUp" && direction !== "DOWN") nextDirection = "UP";
-    if (e.key === "ArrowRight" && direction !== "LEFT") nextDirection = "RIGHT";
-    if (e.key === "ArrowDown" && direction !== "UP") nextDirection = "DOWN";
+    if (e.key === "ArrowLeft"  && direction !== "RIGHT") nextDirection = "LEFT";
+    if (e.key === "ArrowUp"    && direction !== "DOWN")  nextDirection = "UP";
+    if (e.key === "ArrowRight" && direction !== "LEFT")  nextDirection = "RIGHT";
+    if (e.key === "ArrowDown"  && direction !== "UP")    nextDirection = "DOWN";
 });
 
 function draw() {
     update();
     render();
+}
+
+function update() {
+    if (!started) return;
+
+    direction = nextDirection || direction;
+    if (!direction) return;
+
+    let x = snake[0].x;
+    let y = snake[0].y;
+
+    if (direction === "LEFT")  x -= 1;
+    if (direction === "UP")    y -= 1;
+    if (direction === "RIGHT") x += 1;
+    if (direction === "DOWN")  y += 1;
+
+    if (
+        x < 0 || y < 0 ||
+        x >= COLS || y >= COLS ||
+        collision({ x, y }, snake) ||
+        collision({ x, y }, obstacles)
+    ) {
+        return gameOver();
+    }
+
+    if (x === food.x && y === food.y) {
+        applyFood();
+        food = randomFood();
+    } else {
+        snake.pop();
+    }
+
+    snake.unshift({ x, y });
+}
+
+function render() {
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, CANVASSIZE, CANVASSIZE);
+
+    drawGrid();
+    drawObstacles();
+    drawFood();
+
+    for (let i = 0; i < snake.length; i++) {
+        const px = snake[i].x * box;
+        const py = snake[i].y * box;
+        const color = i === 0 ? "#00ff99" : "#00cc66";
+        drawRoundedRect(px + 1, py + 1, box - 2, 5, color);
+    }
+
+    if (!started) {
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0, 0, CANVASSIZE, CANVASSIZE);
+        ctx.fillStyle = "#00ff99";
+        ctx.font = `bold ${CANVASSIZE * 0.045}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Nhấn phím mũi tên để bắt đầu", CANVASSIZE / 2, CANVASSIZE / 2);
+    }
+}
+
+function drawGrid() {
+    ctx.strokeStyle = "#0f2040";
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= COLS; i++) {
+        const p = i * box;
+        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, CANVASSIZE); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(CANVASSIZE, p); ctx.stroke();
+    }
+}
+
+function drawFood() {
+    foodPulse += 0.1;
+    const px = food.x * box + box / 2;
+    const py = food.y * box + box / 2;
+    const radius = box * 0.3 + Math.sin(foodPulse) * (box * 0.05);
+
+    ctx.fillStyle = food.type === "bonus" ? "#f59e0b" : "red";
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawObstacles() {
+    ctx.fillStyle = "#475569";
+    obstacles.forEach(o => {
+        const px = o.x * box;
+        const py = o.y * box;
+        ctx.fillRect(px + 1, py + 1, box - 2, box - 2);
+    });
 }
 
 function drawRoundedRect(x, y, size, radius, color) {
@@ -75,75 +185,12 @@ function drawRoundedRect(x, y, size, radius, color) {
     ctx.fill();
 }
 
-function drawGrid() {
-    ctx.strokeStyle = "#222";
-    for (let i = 0; i < canvasSize; i += box) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, canvasSize);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(canvasSize, i);
-        ctx.stroke();
-    }
-}
-function update() {
-    if (!started) return;
-
-    direction = nextDirection || direction;
-
-    let snakeX = snake[0].x;
-    let snakeY = snake[0].y;
-
-    if (direction === "LEFT") snakeX -= box;
-    if (direction === "UP") snakeY -= box;
-    if (direction === "RIGHT") snakeX += box;
-    if (direction === "DOWN") snakeY += box;
-
-    let newHead = { x: snakeX, y: snakeY };
-
-    // va chạm
-    if (
-        snakeX < 0 || snakeY < 0 ||
-        snakeX >= canvasSize || snakeY >= canvasSize ||
-        collision(newHead, snake) ||
-        collision(newHead, obstacles)
-    ) {
-        return gameOver();
-    }
-
-    // ăn
-    if (snakeX === food.x && snakeY === food.y) {
-        applyFood();
-        food = randomFood();
-    } else {
-        snake.pop();
-    }
-
-    snake.unshift(newHead);
-}
-
-function render() {
-    ctx.clearRect(0, 0, canvasSize, canvasSize);
-
-    drawGrid();
-    drawFood();
-    drawObstacles();
-
-    for (let i = 0; i < snake.length; i++) {
-        let color = i === 0 ? "#00ff99" : "#00cc66";
-        drawRoundedRect(snake[i].x + 1, snake[i].y + 1, 18, 5, color);
-    }
-}
-
 function randomFood() {
     let newFood;
     do {
         newFood = {
-            x: Math.floor(Math.random() * (canvasSize / box)) * box,
-            y: Math.floor(Math.random() * (canvasSize / box)) * box,
+            x: Math.floor(Math.random() * COLS),
+            y: Math.floor(Math.random() * COLS),
             type: Math.random() < 0.2 ? "bonus" : "normal"
         };
     } while (
@@ -154,8 +201,15 @@ function randomFood() {
 }
 
 function applyFood() {
-    if (food.type === "bonus") score += 3;
-    else score++;
+    if (food.type === "bonus") {
+        score += 3;
+        for (let i = 0; i < 2; i++)
+            snake.push({ ...snake[snake.length - 1] });
+    } else {
+        score++;
+    }
+
+    if (soundOn) { eatSound.currentTime = 0; eatSound.play(); }
 
     scoreText.innerText = "Score: " + score;
 
@@ -166,46 +220,48 @@ function applyFood() {
     }
 }
 
-function drawFood() {
-    foodPulse += 0.1;
-    let size = 14 + Math.sin(foodPulse) * 3;
-
-    ctx.fillStyle = food.type === "bonus" ? "gold" : "red";
-    ctx.beginPath();
-    ctx.arc(food.x + 10, food.y + 10, size / 2, 0, Math.PI * 2);
-    ctx.fill();
-}
-
 function generateObstacles(level) {
-    let obs = [];
-    let count = level === "easy" ? 0 : level === "medium" ? 5 : 10;
+    const obs = [];
+    const count = level === 1 ? 0 : level === 2 ? 5 : 10;
+    const forbidden = new Set();
+    forbidden.add("10,10");
 
-    for (let i = 0; i < count; i++) {
-        obs.push({
-            x: Math.floor(Math.random() * (canvasSize / box)) * box,
-            y: Math.floor(Math.random() * (canvasSize / box)) * box
-        });
+    let attempts = 0;
+    while (obs.length < count && attempts < 500) {
+        attempts++;
+        const x = Math.floor(Math.random() * COLS);
+        const y = Math.floor(Math.random() * COLS);
+        const key = `${x},${y}`;
+        if (!forbidden.has(key)) {
+            obs.push({ x, y });
+            forbidden.add(key);
+        }
     }
     return obs;
-}
-
-function drawObstacles() {
-    ctx.fillStyle = "gray";
-    obstacles.forEach(o => {
-        ctx.fillRect(o.x, o.y, box, box);
-    });
 }
 
 function collision(head, body) {
     return body.some(item => item.x === head.x && item.y === head.y);
 }
 
-function gameOver() {
+function changeSpeed(value) {
+    speedMultiplier = Math.min(3, Math.max(0.5, speedMultiplier + value));
+    document.getElementById("speedValue").innerText = speedMultiplier.toFixed(2);
     clearInterval(game);
+    speed = baseSpeed / speedMultiplier;
+    game = setInterval(draw, speed);
+}
+
+function gameOver() {
+    if (soundOn) hitSound.play();
+    clearInterval(game);
+    if (finalScoreText) finalScoreText.innerText = "Điểm của bạn: " + score;
     gameOverDiv.style.display = "block";
 }
 
 function restartGame() {
-    menu.style.display = "block";
     gameOverDiv.style.display = "none";
+    initGame(currentLevel);
 }
+
+initGame(1);
